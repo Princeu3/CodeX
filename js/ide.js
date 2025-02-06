@@ -1,4 +1,5 @@
 import { IS_PUTER } from "./puter.js";
+import initChatbot from './chatbot.js';
 
 const API_KEY = ""; // Get yours at https://platform.sulu.sh/apis/judge0
 
@@ -47,44 +48,48 @@ var sqliteAdditionalFiles;
 var languages = {};
 
 var layoutConfig = {
-    settings: {
-        showPopoutIcon: false,
-        reorderEnabled: true
-    },
+    settings: { /* ... */ },
     content: [{
         type: "row",
-        content: [{
-            type: "component",
-            width: 66,
-            componentName: "source",
-            id: "source",
-            title: "Source Code",
-            isClosable: false,
-            componentState: {
-                readOnly: false
+        content: [
+            {
+                type: "component",
+                width: 50,
+                componentName: "source",
+                id: "source",
+                title: "Source Code",
+                isClosable: false
+            },
+            {
+                type: "column",
+                width: 25,
+                content: [
+                    {
+                        type: "component",
+                        componentName: "stdin",
+                        id: "stdin",
+                        title: "Input",
+                        isClosable: false
+                    },
+                    {
+                        type: "component",
+                        componentName: "stdout",
+                        id: "stdout",
+                        title: "Output",
+                        isClosable: false
+                    }
+                ]
+            },
+            {
+                type: "component",
+                width: 25,
+                componentName: "chatbot",
+                id: "chatbot",
+                title: "Chatbot",
+                isClosable: false,
+                componentState: {}
             }
-        }, {
-            type: "column",
-            content: [{
-                type: "component",
-                componentName: "stdin",
-                id: "stdin",
-                title: "Input",
-                isClosable: false,
-                componentState: {
-                    readOnly: false
-                }
-            }, {
-                type: "component",
-                componentName: "stdout",
-                id: "stdout",
-                title: "Output",
-                isClosable: false,
-                componentState: {
-                    readOnly: true
-                }
-            }]
-        }]
+        ]
     }]
 };
 
@@ -541,7 +546,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
     require(["vs/editor/editor.main"], function (ignorable) {
         layout = new GoldenLayout(layoutConfig, $("#judge0-site-content"));
-
+    
         layout.registerComponent("source", function (container, state) {
             sourceEditor = monaco.editor.create(container.getElement()[0], {
                 automaticLayout: true,
@@ -553,10 +558,9 @@ document.addEventListener("DOMContentLoaded", async function () {
                     enabled: true
                 }
             });
-
             sourceEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, run);
         });
-
+    
         layout.registerComponent("stdin", function (container, state) {
             stdinEditor = monaco.editor.create(container.getElement()[0], {
                 automaticLayout: true,
@@ -569,7 +573,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 }
             });
         });
-
+    
         layout.registerComponent("stdout", function (container, state) {
             stdoutEditor = monaco.editor.create(container.getElement()[0], {
                 automaticLayout: true,
@@ -582,13 +586,15 @@ document.addEventListener("DOMContentLoaded", async function () {
                 }
             });
         });
-
+    
+        initChatbot(layout);
+    
         layout.on("initialised", function () {
             setDefaults();
             refreshLayoutSize();
             window.top.postMessage({ event: "initialised" }, "*");
         });
-
+    
         layout.init();
     });
 

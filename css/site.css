@@ -5,3 +5,87 @@ html, body {
     padding: 0;
     overflow: hidden;
 }
+
+/* Chatbot container dark mode (already defined) */
+.chatbot-container.dark {
+    background-color: #1e1e1e;
+    color: #ccc;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Chat log area */
+  .chat-log {
+    background-color: #2d2d2d;
+    padding: 10px;
+    overflow-y: auto;
+    flex-grow: 1;
+  }
+  
+  /* Chat message styling */
+  .chat-message {
+    margin: 5px 0;
+    padding: 8px;
+    border-radius: 5px;
+    word-wrap: break-word;
+  }
+  
+  /* Text portions of bot messages */
+  .chat-text {
+    margin-bottom: 10px;
+  }
+  
+  /* Code container styling */
+  .chat-code {
+    background-color: #1e1e1e;
+    border: 1px solid #444;
+    border-radius: 5px;
+    margin: 10px 0;
+    position: relative;
+  }
+  
+  /* Code block styling */
+  .chat-code pre {
+    margin: 0;
+    padding: 10px;
+    overflow-x: auto;
+    background-color: #1e1e1e;
+    color: #dcdcdc;
+    font-family: monospace;
+  }
+  
+  /* Copy button for code blocks */
+  .copy-code-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    cursor: pointer;
+    background: #555;
+    color: #ccc;
+    border: none;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.8em;
+  }
+  
+  .copy-code-btn:hover {
+    background: #666;
+  }
+  
+  /* Chat input styling */
+  .chat-input {
+    display: flex;
+    padding: 10px;
+    border-top: 1px solid #ccc;
+  }
+  
+  .chat-input input {
+    flex-grow: 1;
+    padding: 8px;
+    margin-right: 5px;
+    background-color: #222;
+    color: #ccc;
+    border: 1px solid #444;
+    border-radius: 3px;
+  }
