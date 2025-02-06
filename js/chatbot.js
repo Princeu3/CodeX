@@ -159,7 +159,7 @@ export default function initChatbot(glInstance) {
         const response = await fetch(apiUrl, {
             method: "POST",
             headers: {
-                "Authorization": "Bearer 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",
+                "Authorization": "Bearer sk-xxxx",
                 "HTTP-Referer": "http://localhost:8080",
                 "X-Title": "Judge0 IDE",
                 "Content-Type": "application/json"
