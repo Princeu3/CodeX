@@ -150,18 +150,8 @@ export default function initChatbot(glInstance) {
     const payload = {
         model: "meta-llama/llama-3.2-11b-vision-instruct:free",
         messages: [
-            {
-                role: "system",
-                content: [
-                    { type: "text", text: "You are an AI assistant inside an online IDE. Help debug, explain, and improve code." }
-                ]
-            },
-            {
-                role: "user",
-                content: [
-                    { type: "text", text: `User Question: ${question}\n\nActive Code:\n${activeCode}` }
-                ]
-            }
+            { role: "system", content: "You are an AI assistant inside an online IDE. Help debug, explain, and improve code." },
+            { role: "user", content: `User Question: ${question}\n\nActive Code:\n${activeCode}` }
         ]
     };
 
@@ -169,7 +159,7 @@ export default function initChatbot(glInstance) {
         const response = await fetch(apiUrl, {
             method: "POST",
             headers: {
-                "Authorization": "Bearer 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",
+                "Authorization": "Bearer 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",
                 "HTTP-Referer": "http://localhost:8080",
                 "X-Title": "Judge0 IDE",
                 "Content-Type": "application/json"
@@ -178,10 +168,11 @@ export default function initChatbot(glInstance) {
         });
 
         if (!response.ok) {
-            throw new Error(`OpenRouter API error: ${response.statusText}`);
+            const errorText = await response.text(); // Read response text only once
+            throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
         }
 
-        const data = await response.json();
+        const data = await response.json(); // Read response JSON only once
         console.log("OpenRouter API response:", data);
 
         let reply = "";
