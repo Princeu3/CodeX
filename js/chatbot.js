@@ -1,15 +1,54 @@
 // chatbot.js
 
+// Add this at the top of the file with other imports
+const AVAILABLE_MODELS = [
+    {
+        id: "meta-llama/llama-3.2-11b-vision-instruct",
+        name: "Llama 3.2 11B",
+        description: "Balanced performance and speed"
+    },
+    {
+        id: "anthropic/claude-3-sonnet",
+        name: "Claude 3 Sonnet",
+        description: "High performance code assistant"
+    },
+    {
+        id: "gpt-4-turbo",
+        name: "GPT-4 Turbo",
+        description: "Powerful general-purpose model"
+    },
+    {
+        id: "gpt-3.5-turbo",
+        name: "GPT-3.5 Turbo",
+        description: "Fast and efficient"
+    }
+];
+
 export default function initChatbot(glInstance) {
     glInstance.registerComponent('chatbot', function (container, state) {
       // Add the "dark" class so dark-mode CSS is applied.
       container.getElement().html(`
         <div class="chatbot-container dark">
-          <div class="chat-log" id="chat-log"></div>
-          <div class="chat-input">
-            <input type="text" id="chat-input-field" placeholder="Ask a question about code issues..." />
-            <button id="chat-send-btn">Send</button>
-          </div>
+            <div class="chat-controls">
+                <select id="model-selector" class="model-selector">
+                    ${AVAILABLE_MODELS.map(model => `
+                        <option value="${model.id}">
+                            ${model.name} - ${model.description}
+                        </option>
+                    `).join('')}
+                </select>
+            </div>
+            <div class="chat-log" id="chat-log"></div>
+            <div class="chat-input">
+                <input type="text" 
+                       id="chat-input-field" 
+                       placeholder="Ask a question about code issues..."
+                       class="placeholder-gray-500" />
+                <button id="chat-send-btn">
+                    <i class="paper plane icon"></i>
+                    Send
+                </button>
+            </div>
         </div>
       `);
   
@@ -28,6 +67,30 @@ export default function initChatbot(glInstance) {
           sendUserMessage(container);
         }
       });
+  
+      // Add this after initializing the container
+      const $modelSelector = container.getElement().find('#model-selector');
+  
+      // Add this after initializing the model selector
+      $modelSelector.on('change', function() {
+          const selectedModel = $(this).val();
+          const modelInfo = AVAILABLE_MODELS.find(m => m.id === selectedModel);
+          
+          // Optionally show a notification about model change
+          appendChatMessage('bot', `Switched to ${modelInfo.name}. ${modelInfo.description}`);
+          
+          // You could also store the preference in localStorage
+          localStorage.setItem('preferred_model', selectedModel);
+      });
+  
+      // Load preferred model on startup
+      const savedModel = localStorage.getItem('preferred_model');
+      if (savedModel && AVAILABLE_MODELS.some(m => m.id === savedModel)) {
+          $modelSelector.val(savedModel);
+      }
+  
+      // Update the chatbot container styles
+      container.getElement().addClass('chatbot-wrapper');
     });
   }
   
@@ -40,8 +103,8 @@ export default function initChatbot(glInstance) {
     if (question) {
       appendChatMessage('user', question, container);
       inputField.val('');
-      // Pass both the question and the active tab code to the LLM.
-      getLLMResponse(question).then(response => {
+      // Pass container to getLLMResponse
+      getLLMResponse(question, container).then(response => {
         appendChatMessage('bot', response, container);
       }).catch(err => {
         console.error(err);
@@ -72,27 +135,30 @@ export default function initChatbot(glInstance) {
           // Append the text before the code block
           const textSegment = message.substring(lastIndex, match.index);
           if (textSegment.trim().length > 0) {
-            htmlSegments += `<div class="chat-text">${(typeof marked !== "undefined") ? marked.parse(textSegment) : textSegment}</div>`;
+            htmlSegments += `<div class="chat-text prose prose-invert">${(typeof marked !== "undefined") ? marked.parse(textSegment) : textSegment}</div>`;
           }
           // Extract language (if provided) and code content.
           const language = match[1] || "";
           const codeContent = match[2];
           // Render the code block in its own container with a copy button.
-          htmlSegments += `<div class="chat-code">
-            <pre><code class="language-${language}">${escapeHtml(codeContent)}</code></pre>
-            <button class="copy-code-btn" onclick="copyCodeToClipboard(this)">Copy Code</button>
-          </div>`;
+          htmlSegments += `
+            <div class="chat-code">
+                <pre><code class="language-${language}">${escapeHtml(codeContent)}</code></pre>
+                <button class="copy-code-btn" onclick="copyCodeToClipboard(this)">
+                    <i class="copy icon"></i> Copy
+                </button>
+            </div>`;
           lastIndex = match.index + match[0].length;
         }
         // Append any remaining text after the last code block.
         const remainingText = message.substring(lastIndex);
         if (remainingText.trim().length > 0) {
-          htmlSegments += `<div class="chat-text">${(typeof marked !== "undefined") ? marked.parse(remainingText) : remainingText}</div>`;
+          htmlSegments += `<div class="chat-text prose prose-invert">${(typeof marked !== "undefined") ? marked.parse(remainingText) : remainingText}</div>`;
         }
         messageHtml = `<div class="chat-message ${sender}">${htmlSegments}</div>`;
       } else {
         // If no code blocks, render the message normally as markdown.
-        messageHtml = `<div class="chat-message ${sender}">${(typeof marked !== "undefined") ? marked.parse(message) : message}</div>`;
+        messageHtml = `<div class="chat-message ${sender} prose prose-invert">${(typeof marked !== "undefined") ? marked.parse(message) : message}</div>`;
       }
     } else {
       // For user messages, display as plain text.
@@ -139,18 +205,25 @@ export default function initChatbot(glInstance) {
   /**
    * Calls the OpenRouter API to get a response.
    */
-  async function getLLMResponse(question, attempt = 0) {
-    const MAX_ATTEMPTS = 3; // Max retry attempts
-    const RETRY_DELAY_MS = 1000; // 1 second delay for retry
+  async function getLLMResponse(question, container, attempt = 0) {
+    const MAX_ATTEMPTS = 3;
+    const RETRY_DELAY_MS = 1000;
 
     const apiUrl = "https://openrouter.ai/api/v1/chat/completions";
     
-    const activeCode = getActiveEditorCode(); // Get active code from Monaco editor
+    // Get the model selector from the container
+    const $modelSelector = container.getElement().find('#model-selector');
+    const selectedModel = $modelSelector.val() || "meta-llama/llama-3.2-11b-vision-instruct";
+    
+    const activeCode = getActiveEditorCode();
+
+    // Get the system prompt for the selected model
+    const systemPrompt = getSystemPromptForModel(selectedModel);
 
     const payload = {
-        model: "meta-llama/llama-3.2-11b-vision-instruct:free",
+        model: selectedModel,
         messages: [
-            { role: "system", content: "You are an AI assistant inside an online IDE. Help debug, explain, and improve code." },
+            { role: "system", content: systemPrompt },
             { role: "user", content: `User Question: ${question}\n\nActive Code:\n${activeCode}` }
         ]
     };
@@ -159,7 +232,7 @@ export default function initChatbot(glInstance) {
         const response = await fetch(apiUrl, {
             method: "POST",
             headers: {
-                "Authorization": "Bearer sk-xxxx",
+                "Authorization": "Bearer sk-or-xxxx",
                 "HTTP-Referer": "http://localhost:8080",
                 "X-Title": "Judge0 IDE",
                 "Content-Type": "application/json"
@@ -192,12 +265,53 @@ export default function initChatbot(glInstance) {
         if (!reply.trim() && attempt < MAX_ATTEMPTS) {
             console.warn(`Empty reply received. Retrying attempt ${attempt + 1} of ${MAX_ATTEMPTS}...`);
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
-            return await getLLMResponse(question, attempt + 1);
+            return await getLLMResponse(question, container, attempt + 1);
         }
 
         return reply || "No reply received.";
     } catch (error) {
         console.error("Error in getLLMResponse:", error);
         return "Error: Unable to get a response from the model.";
+    }
+}
+
+function getSystemPromptForModel(modelId) {
+    const basePrompt = `You are an AI assistant integrated into an online code editor.
+Your main job is to help users with their code, but you should also be able to engage in casual conversation.
+
+The following are your guidelines:
+1. **If the user asks for coding help**:
+   - Always consider the user's provided code.
+   - Analyze the code and provide relevant help (debugging, optimization, explanation, etc.).
+   - Make sure to be specific and clear when explaining things about their code.
+
+2. **If the user asks a casual question or makes a casual statement**:
+   - Engage in friendly, natural conversation.
+   - Do not reference the user's code unless they bring it up or ask for help.
+   - Be conversational and polite.
+
+3. **If the user's message is ambiguous or unclear**:
+   - Politely ask for clarification or more details to better understand the user's needs.
+   - If the user seems confused about something, help guide them toward what they need.
+
+4. **General Behavior**:
+   - Always respond in a helpful, friendly, and professional tone.
+   - Never assume the user's intent. If unsure, ask clarifying questions.
+   - Keep the conversation flowing naturally, even if the user hasn't directly asked about their code.
+
+You will always have access to the user's latest code.
+Use this context only when relevant to the user's message.
+If their message is unrelated to the code, focus solely on their conversational intent.`;
+    
+    // Add model-specific instructions
+    switch(modelId) {
+        case 'anthropic/claude-3-sonnet':
+            return basePrompt + `\nYou are Claude 3 Sonnet, known for detailed code analysis and explanations.`;
+        case 'gpt-4-turbo':
+            return basePrompt + `\nYou are GPT-4 Turbo, capable of handling complex programming tasks.`;
+        case 'gpt-3.5-turbo':
+            return basePrompt + `\nYou are GPT-3.5 Turbo, optimized for quick and efficient responses.`;
+        default:
+            return basePrompt + `\nYou are Llama 3.2, balanced for both performance and speed.`;
     }
 }
