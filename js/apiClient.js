@@ -55,7 +55,7 @@ export async function getLLMResponse(question, container, attempt = 0) {
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
-        "Authorization": "Bearer sk-or-xxxxx",
+        "Authorization": "Bearer sk-or-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
         "HTTP-Referer": "http://localhost:8080",
         "X-Title": "Judge0 IDE",
         "Content-Type": "application/json"
